@@ -1,0 +1,65 @@
+# backend/core/memory/context_manager.py
+
+"""
+Context Manager for maintaining conversation state and file context during user interactions.
+This module provides a unified interface for managing different memory types:
+- Current conversation context (short-term)
+- Session-specific memory (medium-term)
+- Persistent knowledge (long-term)
+"""
+
+
+
+class ContextManager:
+  
+    
+    def __init__(self, session_id: str):
+       . . .
+       . . .
+        if not self.session_store.session_exists(session_id):
+            self.initialize_session()
+    
+    def initialize_session(self) -> None:
+    - - -
+    def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        ----
+    
+    def add_file(self, file_id: str, metadata: Dict[str, Any]) -> None:
+        ---
+    
+    def add_task(self, task_id: str, task_data: Dict[str, Any]) -> None:
+        ---
+    def update_task_status(self, task_id: str, status: str, results: Optional[Dict[str, Any]] = None) -> None:
+       =----
+    
+    def add_insight(self, insight: Dict[str, Any]) -> None:
+        -----
+    
+    def get_conversation_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        ----
+    
+    def get_conversation_context(self) -> Dict[str, Any]:
+        ----
+    def get_file_context(self) -> Dict[str, Dict]:
+        ----
+    
+    def get_active_tasks(self) -> List[Dict[str, Any]]:
+        
+    
+    def get_completed_tasks(self, limit: int = 5) -> List[Dict[str, Any]]:
+       
+    
+    def get_insights(self) -> List[Dict[str, Any]]:
+       
+    
+    def _get_recent_context(self, message_count: int) -> str:
+        
+    
+    def _get_recent_messages_text(self, count: int) -> str:
+        
+    
+    def _calculate_session_duration(self, session: Dict[str, Any]) -> str:
+        
+    
+    def clear_session(self) -> None:
+        
