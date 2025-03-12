@@ -4,12 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 
-from api.routers import conversation_router, data_router, task_router
-from api.middleware import error_handler, logging_middleware, session_middleware
-from core.memory.context_manager import ContextManager
-from core.memory.session_store import SessionStore
-from core.task_queue.queue_manager import QueueManager
-from utils.logger import setup_logger
+from routers import conversation_router, data_router, task_router
+from .middleware import error_handler, logging_middleware, session_middleware
+from ..core.memory.context_manager import ContextManager
+from ..core.memory.session_store import SessionStore
+from ..core.task_queue.queue_manager import TaskQueueManager
+from ..utils.logger import setup_logger
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -24,7 +24,7 @@ logger = setup_logger(__name__)
 # Initialize core components
 session_store = SessionStore()
 context_manager = ContextManager(session_store)
-queue_manager = QueueManager()
+queue_manager = TaskQueueManager()
 
 # Add CORS middleware
 app.add_middleware(

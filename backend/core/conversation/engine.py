@@ -7,8 +7,8 @@ import uuid
 from .message_processor import UnderstandingAgent
 from .response_generator import ResponseGenerationAgent
 from ..task_queue.task_creator import TaskCreationAgent
-from ..memory.context_manager import MemoryService
-from ..task_queue.queue_manager import TaskQueue
+from ..memory.context_manager import ContextManager  
+from ..task_queue.queue_manager import TaskQueueManager
 from ...utils.prompt_templates import PROMPT_TEMPLATES
 from ...utils.llm_connector import LLMProvider
 
@@ -21,15 +21,15 @@ class ConversationEngine:
         self, 
         llm_provider: str = "openai",
         model_name: str = None,
-        memory_service: Optional[MemoryService] = None,
-        task_queue: Optional[TaskQueue] = None
+        memory_service: Optional[ContextManager] = None,
+        task_queue: Optional[TaskQueueManager] = None
     ):
         # Initialize LLM provider based on user preference
         self.llm = LLMProvider.create(provider=llm_provider, model_name=model_name)
         
         # Initialize supporting services or use injected ones
-        self.memory_service = memory_service or MemoryService(llm_provider=self.llm)
-        self.task_queue = task_queue or TaskQueue()
+        self.memory_service = memory_service or ContextManager(llm_provider=self.llm)
+        self.task_queue = task_queue or TaskQueueManager()
         
         # Initialize specialized agents
         self.understanding_agent = UnderstandingAgent(llm=self.llm)

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
 
-from core.task_queue.queue_manager import QueueManager
+from core.task_queue.queue_manager import TaskQueueManager
 from core.task_queue.task_schema import Task, TaskStatus, TaskType
 
 router = APIRouter()
@@ -38,7 +38,7 @@ async def create_task(
         )
         
         # Add task to queue
-        queue_manager = QueueManager()
+        queue_manager = TaskQueueManager()
         queue_manager.add_task(task)
         
         return {
@@ -55,7 +55,7 @@ async def get_task_status(
     req: Request
 ):
     try:
-        queue_manager = QueueManager()
+        queue_manager = TaskQueueManager()
         task = queue_manager.get_task(task_id)
         
         if not task:
@@ -82,7 +82,7 @@ async def list_tasks(
     
 ):
     try:
-        queue_manager = QueueManager()
+        queue_manager = TaskQueueManager()
         tasks = queue_manager.list_tasks(session_id, status)
         
         return {

@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
-from core.conversation.engine import ConversationEngine
-from core.memory.context_manager import ContextManager
+from ...core.conversation.engine import ConversationEngine
+from ...core.memory.context_manager import ContextManager
 
 router = APIRouter()
 
