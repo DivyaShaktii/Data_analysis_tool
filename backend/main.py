@@ -4,12 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 
-from routers import conversation_router, data_router, task_router
-from .middleware import error_handler, logging_middleware, session_middleware
-from ..core.memory.context_manager import ContextManager
-from ..core.memory.session_store import SessionStore
-from ..core.task_queue.queue_manager import TaskQueueManager
-from ..utils.logger import setup_logger
+from api.routers import conversation_router, data_router, task_router
+from api.middleware import error_handler, logging_middleware, session_middleware
+from core.memory.context_manager import ContextManager
+from core.memory.session_store import SessionStore
+from core.task_queue.queue_manager import TaskQueueManager
+from utils.logger import setup_logger
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -57,4 +57,4 @@ async def health_check():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("api.main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

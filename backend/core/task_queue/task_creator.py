@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from ...utils.prompt_templates import PROMPT_TEMPLATES
+from utils.prompt_templates import PROMPT_TEMPLATES
 from .task_schema import Task
 
 logger = logging.getLogger(__name__)

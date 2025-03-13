@@ -192,6 +192,83 @@ class ContextManager:
         session = self.session_store.get_session(self.session_id)
         return session['messages'][-limit:] if session['messages'] else []
     
+    async def get_recent_history(self, user_id: str, session_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get recent conversation history for a specific user and session.
+        
+        Args:
+            user_id: Unique identifier for the user
+            session_id: Current conversation session ID
+            limit: Maximum number of messages to return
+            
+        Returns:
+            List of recent messages
+        """
+        # Update session_id to the one provided in the parameters
+        self.session_id = session_id
+        return self.get_conversation_history(limit)
+    
+    async def get_relevant_insights(self, user_id: str, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Get insights relevant to the given query.
+        
+        Args:
+            user_id: Unique identifier for the user
+            query: Text query to match against stored insights
+            limit: Maximum number of insights to return
+            
+        Returns:
+            List of relevant insights
+        """
+        # Use the memory_store to retrieve relevant insights
+        return self.memory_store.retrieve_relevant_insights(
+            session_id=self.session_id,
+            query=query,
+            limit=limit
+        )
+    
+    async def store_interaction(self, user_id: str, session_id: str, interaction_id: str, 
+                               message: str, response: str, intent: str, 
+                               entities: List[Any], is_followup: bool) -> None:
+        """
+        Store a user-assistant interaction in memory.
+        
+        Args:
+            user_id: Unique identifier for the user
+            session_id: Current conversation session ID
+            interaction_id: Unique identifier for this interaction
+            message: The user's message
+            response: The assistant's response
+            intent: Detected intent of the user's message
+            entities: Entities extracted from the message
+            is_followup: Whether this is a followup question
+        """
+        # Update session_id to the one provided in the parameters
+        self.session_id = session_id
+        
+        # Add user message
+        self.add_message(
+            role="user",
+            content=message,
+            metadata={
+                "interaction_id": interaction_id,
+                "intent": intent,
+                "entities": entities
+            }
+        )
+        
+        # Add assistant response
+        self.add_message(
+            role="assistant",
+            content=response,
+            metadata={
+                "interaction_id": interaction_id,
+                "is_followup": is_followup,
+                "contains_insight": not is_followup,  # Assume non-followups contain insights
+                "entities": entities
+            }
+        )
+    
     def get_conversation_context(self) -> Dict[str, Any]:
         """
         Get the complete context needed for responding to the user.

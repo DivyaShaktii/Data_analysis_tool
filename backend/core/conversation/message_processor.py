@@ -2,7 +2,7 @@
 from typing import Dict, List, Optional, Any
 import logging
 
-from ...utils.prompt_templates import PROMPT_TEMPLATES
+from utils.prompt_templates import PROMPT_TEMPLATES
 
 logger = logging.getLogger(__name__)
 

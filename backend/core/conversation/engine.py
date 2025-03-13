@@ -9,8 +9,8 @@ from .response_generator import ResponseGenerationAgent
 from ..task_queue.task_creator import TaskCreationAgent
 from ..memory.context_manager import ContextManager  
 from ..task_queue.queue_manager import TaskQueueManager
-from ...utils.prompt_templates import PROMPT_TEMPLATES
-from ...utils.llm_connector import LLMProvider
+from utils.prompt_templates import PROMPT_TEMPLATES
+from utils.llm_connector import LLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class ConversationEngine:
         self.llm = LLMProvider.create(provider=llm_provider, model_name=model_name)
         
         # Initialize supporting services or use injected ones
-        self.memory_service = memory_service or ContextManager(llm_provider=self.llm)
+        self.memory_service = memory_service or ContextManager()
         self.task_queue = task_queue or TaskQueueManager()
         
         # Initialize specialized agents
