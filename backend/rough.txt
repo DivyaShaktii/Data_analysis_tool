@@ -1,65 +1,98 @@
-# backend/core/memory/context_manager.py
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2025-03-15 16:04:10,722 - core.memory.session_store - ERROR - Error saving session <core.memory.session_store.SessionStore object at 0x0000019783BEF7A0>: [Errno 22] Invalid argument: 'data/sessions\\<core.memory.session_store.SessionStore object at 0x0000019783BEF7A0>.json'
+2025-03-15 16:04:10,739 - core.memory.memory_store - ERROR - Error saving to data/memory\schemas.json: Object of type SessionStore is not JSON serializable
+2025-03-15 16:04:10,797 - core.memory.memory_store - ERROR - Error updating vectorizer: empty vocabulary; perhaps the documents only contain stop words
+2025-03-15 16:04:10,830 - api.middleware.error_handler - ERROR - Unhandled exception: [TypeError("'numpy.int64' object is not iterable"), TypeError('vars() argument must have __dict__ attribute')]
+Traceback (most recent call last):
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\encoders.py", line 324, in jsonable_encoder
+    data = dict(obj)
+           ^^^^^^^^^
+TypeError: 'numpy.int64' object is not iterable
 
-"""
-Context Manager for maintaining conversation state and file context during user interactions.
-This module provides a unified interface for managing different memory types:
-- Current conversation context (short-term)
-- Session-specific memory (medium-term)
-- Persistent knowledge (long-term)
-"""
+During handling of the above exception, another exception occurred:
 
+Traceback (most recent call last):
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\encoders.py", line 329, in jsonable_encoder
+    data = vars(obj)
+           ^^^^^^^^^
+TypeError: vars() argument must have __dict__ attribute
 
+The above exception was the direct cause of the following exception:
 
-class ContextManager:
-  
-    
-    def __init__(self, session_id: str):
-       . . .
-       . . .
-        if not self.session_store.session_exists(session_id):
-            self.initialize_session()
-    
-    def initialize_session(self) -> None:
-    - - -
-    def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
-        ----
-    
-    def add_file(self, file_id: str, metadata: Dict[str, Any]) -> None:
-        ---
-    
-    def add_task(self, task_id: str, task_data: Dict[str, Any]) -> None:
-        ---
-    def update_task_status(self, task_id: str, status: str, results: Optional[Dict[str, Any]] = None) -> None:
-       =----
-    
-    def add_insight(self, insight: Dict[str, Any]) -> None:
-        -----
-    
-    def get_conversation_history(self, limit: int = 10) -> List[Dict[str, Any]]:
-        ----
-    
-    def get_conversation_context(self) -> Dict[str, Any]:
-        ----
-    def get_file_context(self) -> Dict[str, Dict]:
-        ----
-    
-    def get_active_tasks(self) -> List[Dict[str, Any]]:
-        
-    
-    def get_completed_tasks(self, limit: int = 5) -> List[Dict[str, Any]]:
-       
-    
-    def get_insights(self) -> List[Dict[str, Any]]:
-       
-    
-    def _get_recent_context(self, message_count: int) -> str:
-        
-    
-    def _get_recent_messages_text(self, count: int) -> str:
-        
-    
-    def _calculate_session_duration(self, session: Dict[str, Any]) -> str:
-        
-    
-    def clear_session(self) -> None:
-        
+Traceback (most recent call last):
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 177, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "C:\my_tools\Python\Lib\contextlib.py", line 155, in __exit__
+    self.gen.throw(value)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\_utils.py", line 82, in collapse_excgroups
+    raise exc
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 179, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Data_analysis_tool\backend\api\middleware\session_middleware.py", line 28, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 154, in call_next
+    raise app_exc
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 141, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 177, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "C:\my_tools\Python\Lib\contextlib.py", line 155, in __exit__
+    self.gen.throw(value)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\_utils.py", line 82, in collapse_excgroups
+    raise exc
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 179, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Data_analysis_tool\backend\api\middleware\logging_middleware.py", line 17, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 154, in call_next
+    raise app_exc
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\base.py", line 141, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\routing.py", line 327, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\routing.py", line 201, in serialize_response
+    return jsonable_encoder(response_content)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\encoders.py", line 289, in jsonable_encoder
+    encoded_value = jsonable_encoder(
+                    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\encoders.py", line 289, in jsonable_encoder
+    encoded_value = jsonable_encoder(
+                    ^^^^^^^^^^^^^^^^^
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\encoders.py", line 289, in jsonable_encoder
+    encoded_value = jsonable_encoder(
+                    ^^^^^^^^^^^^^^^^^
+  [Previous line repeated 2 more times]
+  File "C:\Users\paicr\Documents\Agents_project\agent_env\Lib\site-packages\fastapi\encoders.py", line 332, in jsonable_encoder
+    raise ValueError(errors) from e
+ValueError: [TypeError("'numpy.int64' object is not iterable"), TypeError('vars() argument must have __dict__ attribute')]

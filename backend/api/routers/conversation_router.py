@@ -10,12 +10,15 @@ router = APIRouter()
 
 class MessageRequest(BaseModel):
     message: str
+    user_id :Optional[str] = None
     session_id: Optional[str] = None
+    file_context: Optional[ Dict] =  None
 
 class MessageResponse(BaseModel):
     response: str
     session_id: str
     tasks_created: List[Dict[str, Any]] = []
+
 
 @router.post("/message", response_model=MessageResponse)
 async def process_message(
@@ -27,18 +30,21 @@ async def process_message(
         context_manager = req.state.context_manager
         
         # Get or create a conversation engine for this session
-        conversation_engine = ConversationEngine(context_manager)
+        
+        conversation_engine = ConversationEngine(memory_service=context_manager)
         
         # Process the message
-        response, session_id, tasks = conversation_engine.process_message(
-            request.message,
-            request.session_id
+        response_data = await conversation_engine.handle_message(
+            message=request.message,
+            user_id=request.user_id or "default_user",
+            session_id=request.session_id or "default_session",
+            file_context=request.file_context
         )
         
         return {
-            "response": response,
-            "session_id": session_id,
-            "tasks_created": tasks
+            "response": response_data["message"],
+            "session_id": request.session_id or "default_session",
+            "tasks_created": response_data.get("pending_tasks", [])
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing message: {str(e)}")

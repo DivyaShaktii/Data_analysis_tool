@@ -12,6 +12,9 @@ from ..task_queue.queue_manager import TaskQueueManager
 from utils.prompt_templates import PROMPT_TEMPLATES
 from utils.llm_connector import LLMProvider
 
+from dotenv import load_dotenv
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 class ConversationEngine:
@@ -19,7 +22,7 @@ class ConversationEngine:
     
     def __init__(
         self, 
-        llm_provider: str = "openai",
+        llm_provider: str = "GROQ",
         model_name: str = None,
         memory_service: Optional[ContextManager] = None,
         task_queue: Optional[TaskQueueManager] = None
@@ -63,6 +66,10 @@ class ConversationEngine:
         interaction_id = str(uuid.uuid4())
         
         try:
+            # Ensure the session exists in the memory service
+            if not await self.memory_service.session_exists(session_id):
+                await self.memory_service.create_session(session_id, user_id)
+            
             # 1. Build context from memory
             conversation_history = await self.memory_service.get_recent_history(
                 user_id=user_id, 

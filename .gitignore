@@ -2,7 +2,7 @@ backend/data/*
 backend/logs/*
 **/logs/
 **/__pycache__/
-rough.txt
+backend/rough.txt
 **/data/
 .env
 notebooks/

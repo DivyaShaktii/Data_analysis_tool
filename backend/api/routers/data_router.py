@@ -22,25 +22,36 @@ async def upload_file(
         contents = await file.read()
         file_handler = FileHandler()
         
-        # Save file and get file path
-        file_path = file_handler.save_file(contents, file.filename, session_id)
+        # Save file and get file metadata
+        file_metadata = file_handler.save_file(contents, file.filename, session_id)
+        
+        # Extract file path from metadata
+        file_path = file_metadata["file_path"]
         
         # Extract metadata
         metadata_extractor = MetadataExtractor()
-        metadata = metadata_extractor.extract_metadata(file_path, file.filename)
+        metadata = metadata_extractor.extract_metadata(file_path, file_metadata)
         
         # Inspect data
         data_inspector = DataInspector()
-        data_info = data_inspector.inspect_data(file_path)
+        data_info = data_inspector.inspect_file(file_path)
         
         # Add file info to context
         context_manager = req.state.context_manager
-        context_manager.add_file_to_context(session_id, {
-            "filename": file.filename,
-            "file_path": file_path,
-            "metadata": metadata,
-            "data_info": data_info
-        })
+        
+        # Generate a file_id (you can use the one from file_metadata if available)
+        file_id = file_metadata.get("file_id", f"{session_id}_{file.filename}")
+        
+        # Use the correct method name and parameters
+        context_manager.add_file(
+            file_id=file_id,
+            metadata={
+                "filename": file.filename,
+                "file_path": file_path,
+                "metadata": metadata,
+                "data_info": data_info
+            }
+        )
         
         return {
             "message": f"File {file.filename} uploaded successfully",
@@ -61,7 +72,7 @@ async def get_data_info(
 ):
     try:
         context_manager = req.state.context_manager
-        file_info = context_manager.get_file_info(session_id)
+        file_info = context_manager.get_file_context()
         if not file_info:
             raise HTTPException(status_code=404, detail="No file data found for this session")
         return file_info
@@ -78,11 +89,15 @@ async def get_data_preview(
 ):
     try:
         context_manager = req.state.context_manager
-        file_info = context_manager.get_file_info(session_id)
+        file_context = context_manager.get_file_context()
         
-        if not file_info:
+        if not file_context:
             raise HTTPException(status_code=404, detail="No file data found for this session")
-            
+        
+        # Get the first file in the context (or you could add a file_id parameter to the endpoint)
+        file_id = next(iter(file_context))
+        file_info = file_context[file_id]['metadata']
+        
         file_handler = FileHandler()
         preview_data = file_handler.get_data_preview(file_info["file_path"], rows)
         

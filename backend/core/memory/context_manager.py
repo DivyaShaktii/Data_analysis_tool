@@ -179,34 +179,29 @@ class ContextManager:
             context=self._get_recent_context(3)
         )
     
-    def get_conversation_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_conversation_history(self, session_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         """
         Get recent conversation history.
         
         Args:
-            limit: Maximum number of messages to return
-            
-        Returns:
-            List of recent messages
-        """
-        session = self.session_store.get_session(self.session_id)
-        return session['messages'][-limit:] if session['messages'] else []
-    
-    async def get_recent_history(self, user_id: str, session_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """
-        Get recent conversation history for a specific user and session.
-        
-        Args:
-            user_id: Unique identifier for the user
             session_id: Current conversation session ID
             limit: Maximum number of messages to return
             
         Returns:
             List of recent messages
         """
-        # Update session_id to the one provided in the parameters
-        self.session_id = session_id
-        return self.get_conversation_history(limit)
+        session = self.session_store.get_session(session_id)
+        return session['messages'][-limit:] if session['messages'] else []
+    
+    async def get_recent_history(
+        self, 
+        user_id: str, 
+        session_id: str,
+        limit: int = 10
+    ) -> List[Dict]:
+        """Get recent conversation history"""
+        # Use the provided session_id instead of self.session_id
+        return self.get_conversation_history(session_id, limit)
     
     async def get_relevant_insights(self, user_id: str, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
@@ -344,7 +339,7 @@ class ContextManager:
     
     def _get_recent_messages_text(self, count: int) -> str:
         """Extract text from recent messages"""
-        messages = self.get_conversation_history(count)
+        messages = self.get_conversation_history(self.session_id, count)
         return "\n".join([f"{m['role']}: {m['content']}" for m in messages])
     
     def _calculate_session_duration(self, session: Dict[str, Any]) -> str:
@@ -357,3 +352,27 @@ class ContextManager:
     def clear_session(self) -> None:
         """Clear the current session data"""
         self.initialize_session()
+
+    async def session_exists(self, session_id: str) -> bool:
+        """Check if a session exists"""
+        try:
+            self.session_store.get_session(session_id)
+            return True
+        except KeyError:
+            return False
+        
+    async def create_session(self, session_id: str, user_id: str) -> None:
+        """Create a new session"""
+        # Create initial data dictionary instead of passing user_id directly
+        initial_data = {
+            'user_id': user_id,
+            'messages': [],
+            'files': {},
+            'active_tasks': [],
+            'completed_tasks': [],
+            'insights': [],
+            'session_start': datetime.now().isoformat(),
+            'last_activity': datetime.now().isoformat()
+        }
+        self.session_store.create_session(session_id, initial_data)
+        

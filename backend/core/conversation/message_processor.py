@@ -69,8 +69,11 @@ class UnderstandingAgent:
             
         formatted = "Prior conversation:\n"
         for i, exchange in enumerate(conversation_history):
-            formatted += f"User: {exchange['message']}\n"
-            formatted += f"Assistant: {exchange['response']}\n\n"
+            # Safely access 'message' and 'response' keys
+            user_message = exchange.get('message', 'No message available')
+            assistant_response = exchange.get('response', 'No response available')
+            formatted += f"User: {user_message}\n"
+            formatted += f"Assistant: {assistant_response}\n\n"
         
         return formatted
     
