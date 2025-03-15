@@ -4,6 +4,7 @@ from typing import Optional, List, Dict, Any
 import pandas as pd
 import io
 import json
+import os
 
 from core.data_processing.file_handler import FileHandler
 from core.data_processing.data_inspector import DataInspector
@@ -28,13 +29,13 @@ async def upload_file(
         # Extract file path from metadata
         file_path = file_metadata["file_path"]
         
-        # Extract metadata
+        # Extract basic metadata without reading the data
         metadata_extractor = MetadataExtractor()
-        metadata = metadata_extractor.extract_metadata(file_path, file_metadata)
+        metadata = metadata_extractor.extract_basic_metadata(file_path, file_metadata)
         
-        # Inspect data
+        # Validate file format without analyzing content
         data_inspector = DataInspector()
-        data_info = data_inspector.inspect_file(file_path)
+        format_info = data_inspector.validate_file_format(file_path)
         
         # Add file info to context
         context_manager = req.state.context_manager
@@ -49,7 +50,7 @@ async def upload_file(
                 "filename": file.filename,
                 "file_path": file_path,
                 "metadata": metadata,
-                "data_info": data_info
+                "format_info": format_info
             }
         )
         
@@ -59,7 +60,7 @@ async def upload_file(
             "file_info": {
                 "filename": file.filename,
                 "metadata": metadata,
-                "data_info": data_info
+                "format_info": format_info
             }
         }
     except Exception as e:
@@ -88,6 +89,7 @@ async def get_data_preview(
     rows: int = 10,
 ):
     try:
+        # Get file context from context manager
         context_manager = req.state.context_manager
         file_context = context_manager.get_file_context()
         
@@ -98,12 +100,100 @@ async def get_data_preview(
         file_id = next(iter(file_context))
         file_info = file_context[file_id]['metadata']
         
-        file_handler = FileHandler()
-        preview_data = file_handler.get_data_preview(file_info["file_path"], rows)
+        # Get file path from context
+        file_path = file_info.get("file_path")
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found on server")
         
-        return {
+        # Get file extension
+        file_extension = file_path.split(".")[-1].lower()
+        
+        # Create a safe preview that doesn't try to read the data
+        # Just return the metadata and format info we already have
+        preview_data = {
             "filename": file_info["filename"],
-            "preview": preview_data
+            "metadata": file_info["metadata"],
+            "format_info": file_info.get("format_info", {}),
+            "preview_note": "Data preview is disabled to avoid serialization issues. Use the chat interface to ask questions about the data."
         }
+        
+        # Add file type specific information
+        if file_extension in ['csv', 'xlsx', 'xls', 'parquet']:
+            preview_data["data_type"] = "tabular"
+        elif file_extension == 'json':
+            preview_data["data_type"] = "structured"
+        elif file_extension == 'txt':
+            preview_data["data_type"] = "text"
+        else:
+            preview_data["data_type"] = "unknown"
+        
+        return preview_data
+        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving data preview: {str(e)}")
+
+@router.get("/files/{session_id}")
+async def list_session_files(
+    session_id: str,
+    req: Request
+):
+    try:
+        context_manager = req.state.context_manager
+        file_context = context_manager.get_file_context()
+        
+        if not file_context:
+            return {"files": []}
+        
+        # Extract basic file info for listing
+        files = []
+        for file_id, file_data in file_context.items():
+            metadata = file_data.get('metadata', {})
+            files.append({
+                "file_id": file_id,
+                "filename": metadata.get("filename", "Unknown"),
+                "file_size": metadata.get("metadata", {}).get("file_size_mb", 0),
+                "format": metadata.get("format_info", {}).get("format", "unknown"),
+                "upload_timestamp": metadata.get("metadata", {}).get("upload_timestamp", "")
+            })
+        
+        return {"files": files}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing files: {str(e)}")
+
+@router.delete("/files/{session_id}/{file_id}")
+async def delete_file(
+    session_id: str,
+    file_id: str,
+    req: Request
+):
+    try:
+        # Get file context
+        context_manager = req.state.context_manager
+        file_context = context_manager.get_file_context()
+        
+        if not file_context or file_id not in file_context:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get file path
+        file_path = file_context[file_id]['metadata'].get('file_path')
+        
+        # Delete file from storage
+        file_handler = FileHandler()
+        if file_path and os.path.exists(file_path):
+            # Get extension from path
+            extension = file_path.split(".")[-1].lower()
+            # Delete the file
+            deleted = file_handler.delete_file(file_id, extension)
+            if not deleted:
+                raise HTTPException(status_code=500, detail="Failed to delete file from storage")
+        
+        # Remove from context
+        context_manager.remove_file(file_id)
+        
+        return {"message": "File deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting file: {str(e)}")

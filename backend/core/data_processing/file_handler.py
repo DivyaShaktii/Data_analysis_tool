@@ -258,3 +258,178 @@ class FileHandler:
                 "readable": False,
                 "error": str(e)
             }
+    
+    def get_data_preview(self, file_path: str, rows: int = 10) -> Dict:
+        """
+        Get a preview of the data in a file.
+        
+        Args:
+            file_path: Path to the file
+            rows: Number of rows to preview
+            
+        Returns:
+            Dict containing preview data
+        """
+        try:
+            # Determine file extension
+            extension = file_path.split(".")[-1].lower()
+            
+            # Read data based on file type
+            if extension == 'csv':
+                # Try to detect encoding
+                encoding = 'utf-8'  # Default encoding
+                try:
+                    with open(file_path, 'rb') as f:
+                        sample = f.read(1024)
+                        import chardet
+                        detected = chardet.detect(sample)
+                        if detected['confidence'] > 0.7:
+                            encoding = detected['encoding']
+                except ImportError:
+                    # chardet not available, use default
+                    pass
+                
+                df = pd.read_csv(file_path, nrows=rows, encoding=encoding)
+                # Replace NaN values with None for JSON serialization
+                preview_data = df.where(pd.notna(df), None).to_dict(orient='records')
+                
+                return {
+                    "format": "csv",
+                    "columns": list(df.columns),
+                    "data": preview_data
+                }
+                
+            elif extension in ['xlsx', 'xls']:
+                # Get sheet names
+                excel_file = pd.ExcelFile(file_path)
+                sheet_names = excel_file.sheet_names
+                
+                # Read first sheet by default
+                sheet_name = sheet_names[0]
+                df = pd.read_excel(file_path, sheet_name=sheet_name, nrows=rows)
+                # Replace NaN values with None for JSON serialization
+                preview_data = df.where(pd.notna(df), None).to_dict(orient='records')
+                
+                return {
+                    "format": "excel",
+                    "sheet": sheet_name,
+                    "sheets": sheet_names,
+                    "columns": list(df.columns),
+                    "data": preview_data
+                }
+                
+            elif extension == 'json':
+                try:
+                    # Try to read as tabular data first
+                    df = pd.read_json(file_path)
+                    if len(df) > rows:
+                        df = df.head(rows)
+                    # Replace NaN values with None for JSON serialization
+                    preview_data = df.where(pd.notna(df), None).to_dict(orient='records')
+                    
+                    return {
+                        "format": "json",
+                        "structure": "tabular",
+                        "columns": list(df.columns),
+                        "data": preview_data
+                    }
+                except:
+                    # If it can't be read as tabular, read as raw JSON
+                    import json
+                    import math
+                    
+                    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                        json_data = json.load(f)
+                    
+                    # Handle different JSON structures
+                    if isinstance(json_data, list):
+                        # For arrays, return first few items
+                        preview_data = json_data[:rows]
+                        # Handle NaN values
+                        preview_data = self._handle_nan_values(preview_data)
+                        
+                        return {
+                            "format": "json",
+                            "structure": "array",
+                            "total_items": len(json_data),
+                            "data": preview_data
+                        }
+                    else:
+                        # For objects, return the object
+                        preview_data = self._handle_nan_values(json_data)
+                        
+                        return {
+                            "format": "json",
+                            "structure": "object",
+                            "data": preview_data
+                        }
+                
+            elif extension == 'parquet':
+                df = pd.read_parquet(file_path)
+                if len(df) > rows:
+                    df = df.head(rows)
+                # Replace NaN values with None for JSON serialization
+                preview_data = df.where(pd.notna(df), None).to_dict(orient='records')
+                
+                return {
+                    "format": "parquet",
+                    "columns": list(df.columns),
+                    "data": preview_data
+                }
+                
+            elif extension == 'txt':
+                # Try to read as CSV with various delimiters
+                try:
+                    df = pd.read_csv(file_path, sep=None, engine='python', nrows=rows)
+                    # Replace NaN values with None for JSON serialization
+                    preview_data = df.where(pd.notna(df), None).to_dict(orient='records')
+                    
+                    return {
+                        "format": "delimited text",
+                        "columns": list(df.columns),
+                        "data": preview_data
+                    }
+                except:
+                    # If it can't be read as delimited, read as plain text
+                    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                        lines = [line.strip() for line in f.readlines()[:rows]]
+                    
+                    return {
+                        "format": "plain text",
+                        "data": lines
+                    }
+            
+            else:
+                return {
+                    "format": "unknown",
+                    "error": f"Unsupported file extension: {extension}"
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting data preview for {file_path}: {str(e)}")
+            return {
+                "error": str(e)
+            }
+    
+    def _handle_nan_values(self, obj):
+        """
+        Recursively replace NaN and infinity values with None for JSON serialization.
+        
+        Args:
+            obj: Object to process
+            
+        Returns:
+            Object with NaN and infinity values replaced with None
+        """
+        import math
+        
+        if isinstance(obj, dict):
+            return {k: self._handle_nan_values(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._handle_nan_values(item) for item in obj]
+        elif isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            return obj
+        else:
+            return obj

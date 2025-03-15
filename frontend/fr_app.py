@@ -137,30 +137,54 @@ def display_file_upload():
                             "content": f"File {uploaded_file.name} uploaded successfully. You can now ask questions about the data."
                         })
                         # Get data preview
-                        preview = get_data_preview()
+                        preview = get_data_info()
                         if preview:
-                            st.session_state.data_preview = preview
+                            st.session_state.file_info = preview
                         # Refresh the page to show the updated state
-                        st.experimental_rerun()
+                        st.rerun()
 
 def display_data_preview():
-    """Display a preview of the uploaded data"""
-    if st.session_state.file_uploaded and hasattr(st.session_state, "data_preview"):
-        with st.expander("Data Preview", expanded=True):
-            st.subheader(f"Preview of {st.session_state.data_preview['filename']}")
-            preview_data = st.session_state.data_preview["preview"]
-            
-            # Convert the preview data to a DataFrame
-            if isinstance(preview_data, list):
-                df = pd.DataFrame(preview_data)
+    """Display basic information about the uploaded file"""
+    if st.session_state.file_uploaded and st.session_state.file_info:
+        with st.expander("File Information", expanded=True):
+            # Get the first file in the context
+            if isinstance(st.session_state.file_info, dict):
+                # If file_info is a direct file object
+                file_info = st.session_state.file_info
+                filename = file_info.get("filename", "Unknown file")
+                metadata = file_info.get("metadata", {})
+                format_info = file_info.get("format_info", {})
             else:
-                df = pd.DataFrame(preview_data)
+                # If file_info is a dictionary of files
+                file_id = next(iter(st.session_state.file_info))
+                file_data = st.session_state.file_info[file_id]
+                filename = file_data.get("metadata", {}).get("filename", "Unknown file")
+                metadata = file_data.get("metadata", {}).get("metadata", {})
+                format_info = file_data.get("metadata", {}).get("format_info", {})
             
-            st.dataframe(df)
+            st.subheader(f"File: {filename}")
             
-            if st.session_state.file_info:
-                st.subheader("Data Information")
-                st.json(st.session_state.file_info["metadata"])
+            # Display file metadata
+            st.subheader("File Metadata")
+            
+            # Display key metadata in a more readable format
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"**File Name:** {metadata.get('file_name', 'N/A')}")
+                st.write(f"**File Size:** {metadata.get('file_size_mb', 0)} MB")
+                st.write(f"**Format:** {format_info.get('format', 'Unknown')}")
+            
+            with col2:
+                st.write(f"**Last Modified:** {metadata.get('last_modified', 'N/A')}")
+                st.write(f"**File Extension:** {metadata.get('file_extension', 'N/A')}")
+                st.write(f"**File ID:** {metadata.get('file_id', 'N/A')}")
+            
+            # Show format information
+            st.subheader("Format Information")
+            st.json(format_info)
+            
+            # Add a note about data preview
+            st.info("Data preview is disabled to avoid serialization issues. Use the chat interface to ask questions about the data.")
 
 def display_task_queue():
     """Display the task queue"""
@@ -261,7 +285,7 @@ def main():
     if st.session_state.tasks:
         st.sidebar.write("Auto-refreshing task status...")
         time.sleep(10)
-        st.experimental_rerun()
+        st.rerun()
 
 if __name__ == "__main__":
     main()
