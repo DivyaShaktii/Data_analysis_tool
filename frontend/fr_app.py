@@ -141,7 +141,7 @@ def display_file_upload():
                         if preview:
                             st.session_state.data_preview = preview
                         # Refresh the page to show the updated state
-                        st.experimental_rerun()
+                        st.rerun()
 
 def display_data_preview():
     """Display a preview of the uploaded data"""
@@ -261,7 +261,7 @@ def main():
     if st.session_state.tasks:
         st.sidebar.write("Auto-refreshing task status...")
         time.sleep(10)
-        st.experimental_rerun()
+        st.rerun()
 
 if __name__ == "__main__":
     main()

@@ -6,6 +6,7 @@ backend/rough.txt
 **/data/
 .env
 notebooks/
-
+.venv
+.vscode
 
 
