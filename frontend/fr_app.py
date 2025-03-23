@@ -19,10 +19,12 @@ st.set_page_config(
 )
 
 # Initialize session state
-if "session_id" not in st.session_state:
-    st.session_state.session_id = str(uuid.uuid4())
 if "user_id" not in st.session_state :
     st.session_state.user_id = str(uuid.uuid4())
+if "project_id" not in st.session_state:
+    st.session_state.project_id = str(uuid.uuid4())
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "tasks" not in st.session_state:
