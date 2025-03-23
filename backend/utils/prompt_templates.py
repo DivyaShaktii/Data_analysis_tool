@@ -10,13 +10,10 @@ Your task is to analyze the user's message, identify their intent, extract relev
 and determine if you need more information before proceeding with an analysis.
 
 User Message: {message}
-
 {conversation_history}
-
 {file_context}
 
 Please analyze the request and provide the following structured output:
-
 INTENT: [Identify the main intent - one of: general_query, data_analysis, visualization, summary, prediction, correlation, comparison, time_series, clarification, or others you determine]
 
 ENTITIES: [List all entities relevant to the analysis such as column names, time periods, metrics, etc.]
@@ -55,8 +52,8 @@ Guidelines for your response:
 Your response:
 """,
 
-    # Template for creating analysis tasks
-    "task_creation": """
+# Template for creating analysis tasks
+"task_creation": """
 You are an AI assistant specializing in creating structured data analysis tasks.
 Based on the information below, create a well-defined analytical task:
 
@@ -68,11 +65,8 @@ Relevant Entities: {entities}
 {file_context}
 
 Please create a structured task definition with the following format:
-
 TASK_TYPE: [Specify one of: general_analysis, data_visualization, data_summary, predictive_model, correlation_analysis, comparative_analysis, time_series_analysis, anomaly_detection, segmentation, or other specific analysis type]
-
 DESCRIPTION: [Write a clear, concise description of what the analysis should accomplish]
-
 PRIORITY: [Assign a priority from 1-5, where 5 is highest priority]
 
 PARAMETERS:
@@ -154,8 +148,8 @@ For each relevant file, extract the following:
 Your extracted context:
 """,
 
-    # Template for insight generation
-    "insight_generation": """
+# Template for insight generation
+"insight_generation": """
 You are an AI assistant specializing in converting data analysis results into clear, actionable insights.
 Transform the technical analysis results into natural language insights that a non-technical user can understand.
 

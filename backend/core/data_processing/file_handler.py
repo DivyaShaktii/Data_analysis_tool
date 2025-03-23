@@ -133,6 +133,41 @@ class FileHandler:
         logger.info(f"File saved: {filename} (ID: {file_id}) for user {user_id}")
         return file_metadata
     
+    def save_file_with_memory_update(self, file_content: BinaryIO, filename: str, user_id: str, 
+                                    session_id: str, context_manager) -> Dict:
+        """
+        Save an uploaded file to storage and update memory systems.
+        
+        Args:
+            file_content: The file content as bytes or file-like object
+            filename: Original filename
+            user_id: ID of the user who uploaded the file
+            session_id: Current session ID
+            context_manager: ContextManager instance to update memory
+            
+        Returns:
+            Dict containing file metadata
+        """
+        # First save the file
+        file_metadata = self.save_file(file_content, filename, user_id)
+        
+        # Enhance metadata with schema information
+        file_path = file_metadata["file_path"]
+        file_preview = self.get_data_preview(file_path)
+        
+        # Add schema information to metadata
+        enhanced_metadata = {
+            **file_metadata,
+            "schema": {col: {"type": str(type(file_preview["data"][0][col]).__name__)} 
+                       for col in file_preview.get("columns", [])},
+            "description": f"User uploaded {filename}"
+        }
+        
+        # Update memory with the file information
+        context_manager.add_file(file_metadata["file_id"], enhanced_metadata)
+        
+        return enhanced_metadata
+    
     def get_file(self, file_id: str, extension: Optional[str] = None) -> Tuple[str, str]:
         """
         Retrieve a file by its ID.

@@ -23,7 +23,8 @@ class TaskCreationAgent:
     async def create_task(
         self,
         user_id: str,
-        session_id: str,
+        project_id: str,
+        session_id: Optional[str],
         intent: Dict,
         entities: List[Dict],
         context: List[Dict],
@@ -34,7 +35,8 @@ class TaskCreationAgent:
         
         Args:
             user_id: User identifier
-            session_id: Current session identifier
+            project_id: Project identifier
+            session_id: Optional current session identifier
             intent: Identified intent from understanding agent
             entities: Extracted entities from understanding agent
             context: Conversation context
@@ -55,6 +57,7 @@ class TaskCreationAgent:
         task = Task(
             id=str(uuid.uuid4()),
             user_id=user_id,
+            project_id=project_id,
             session_id=session_id,
             created_at=datetime.now().isoformat(),
             status="QUEUED",
@@ -68,7 +71,11 @@ class TaskCreationAgent:
         # Enqueue the task
         await self.task_queue.enqueue(task)
         
-        logger.info(f"Created and enqueued task {task.id} of type {task.task_type}")
+        # If context_manager is provided, also update project memory
+        if self.context_manager:
+            self.context_manager.add_task_to_project(user_id, project_id, task.id, task.to_dict())
+        
+        logger.info(f"Created and enqueued task {task.id} of type {task.task_type} for project {project_id}")
         return task
     
     async def _generate_task_details(

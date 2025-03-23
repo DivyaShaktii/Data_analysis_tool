@@ -36,7 +36,8 @@ class Task(BaseModel):
     """
     id: str
     user_id: str
-    session_id: str
+    project_id: str
+    session_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: Optional[str] = None
     started_at: Optional[str] = None
@@ -62,6 +63,9 @@ class Task(BaseModel):
     
     # Agent assignment
     assigned_agent: Optional[str] = None
+    
+    # Track if insights were extracted from this task
+    insights_extracted: bool = False
     
     def update_status(self, new_status: TaskStatus, error_message: Optional[str] = None) -> None:
         """Update the task status and related timestamps"""

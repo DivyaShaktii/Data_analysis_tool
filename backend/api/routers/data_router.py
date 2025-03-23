@@ -37,13 +37,18 @@ async def upload_file(
         data_inspector = DataInspector()
         format_info = data_inspector.validate_file_format(file_path)
         
-        # Add file info to context
+        # Get context manager
         context_manager = req.state.context_manager
+        
+        # Set the correct session_id for the context manager
+        context_manager.session_id = session_id
         
         # Generate a file_id (you can use the one from file_metadata if available)
         file_id = file_metadata.get("file_id", f"{session_id}_{file.filename}")
         
         # Use the correct method name and parameters
+       
+    
         context_manager.add_file(
             file_id=file_id,
             metadata={

@@ -1,6 +1,6 @@
 # backend/core/conversation/engine.py
 from typing import Dict, List, Optional, Any
-import logging
+from utils.logger import setup_logger
 from datetime import datetime
 import uuid
 
@@ -15,7 +15,7 @@ from utils.llm_connector import LLMProvider
 from dotenv import load_dotenv
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 class ConversationEngine:
     """Central orchestrator for user interactions"""
@@ -45,6 +45,7 @@ class ConversationEngine:
         self, 
         message: str, 
         user_id: str, 
+        project_id: str,
         session_id: str,
         file_context: Dict = None
     ) -> Dict[str, Any]:
@@ -54,6 +55,7 @@ class ConversationEngine:
         Args:
             message: The user's message text
             user_id: Unique identifier for the user
+            project_id: Unique identifier for the project
             session_id: Current conversation session ID
             file_context: Optional metadata about uploaded files
             
@@ -66,20 +68,19 @@ class ConversationEngine:
         interaction_id = str(uuid.uuid4())
         
         try:
+            # Initialize the memory service with correct project and session info
+            self.memory_service = ContextManager(project_id=project_id, session_id=session_id, user_id=user_id)
+            
             # Ensure the session exists in the memory service
-            if not await self.memory_service.session_exists(session_id):
-                await self.memory_service.create_session(session_id, user_id)
+            if not self.memory_service.session_exists(project_id, session_id):
+                self.memory_service.create_session(session_id)
             
             # 1. Build context from memory
-            conversation_history = await self.memory_service.get_recent_history(
-                user_id=user_id, 
-                session_id=session_id,
-                limit=10
-            )
+            conversation_history = self.memory_service.get_conversation_history(session_id, limit=10)
             
             past_insights = await self.memory_service.get_relevant_insights(
-                user_id=user_id, 
-                query=message
+                query=message,
+                limit=5
             )
             
             # 2. Analyze message for intent and entities

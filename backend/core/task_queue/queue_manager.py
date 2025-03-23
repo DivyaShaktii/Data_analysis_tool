@@ -17,12 +17,13 @@ class TaskQueueManager:
     dependencies, and dispatching tasks to the execution system.
     """
     
-    def __init__(self, storage_connector=None, max_concurrent_tasks: int = 5):
+    def __init__(self, storage_connector=None, context_manager=None, max_concurrent_tasks: int = 5):
         """
         Initialize the task queue manager.
         
         Args:
             storage_connector: Connection to persistent storage for tasks
+            context_manager: Reference to ContextManager for memory integration
             max_concurrent_tasks: Maximum number of tasks that can run concurrently
         """
         self.tasks: Dict[str, Task] = {}  # All tasks (by ID)
@@ -31,6 +32,7 @@ class TaskQueueManager:
         self.completed_tasks: deque = deque(maxlen=100)  # Recently completed tasks
         
         self.storage = storage_connector
+        self.context_manager = context_manager  # Store reference to context manager
         self.max_concurrent_tasks = max_concurrent_tasks
         self.task_handlers: Dict[str, Callable[[Task], Awaitable[Dict[str, Any]]]] = {}
         
@@ -54,6 +56,23 @@ class TaskQueueManager:
             # Add to priority queue if it's ready to run
             if not task.dependencies or self._all_dependencies_met(task):
                 self._add_to_priority_queue(task)
+            
+            # Add task to project context
+            if self.context_manager:
+                # Create task data for project context
+                task_data = {
+                    'task_type': task.task_type,
+                    'description': task.description,
+                    'parameters': task.parameters,
+                    'entities': task.parameters.get('entities', []),
+                    'priority': task.priority
+                }
+                self.context_manager.add_task_to_project(
+                    task.user_id,
+                    task.project_id,
+                    task.id,
+                    task_data
+                )
             
             # Persist the task if storage is available
             if self.storage:
@@ -204,6 +223,11 @@ class TaskQueueManager:
         
         if results and status == TaskStatus.COMPLETED:
             task.add_results(results)
+            
+            # Extract insights and update project memory
+            if self.context_manager and not task.insights_extracted:
+                await self._extract_and_store_insights(task)
+                task.insights_extracted = True
         
         # Update dependent tasks if this one is now complete
         if status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
@@ -216,6 +240,15 @@ class TaskQueueManager:
         # Persist changes if storage is available
         if self.storage:
             await self.storage.update_task(task.to_dict())
+        
+        # Update project status in context manager
+        if self.context_manager:
+            self.context_manager.update_task_in_project(
+                task.project_id, 
+                task_id, 
+                status.value, 
+                results
+            )
         
         logger.info(f"Updated task {task_id} status to {status}")
         return task
@@ -274,52 +307,54 @@ class TaskQueueManager:
             asyncio.create_task(self._execute_task(task))
     
     async def _execute_task(self, task: Task) -> None:
-        """
-        Execute a single task by calling the appropriate handler.
-        
-        Args:
-            task: Task to execute
-        """
+        """Execute a single task by calling the appropriate handler."""
         logger.info(f"Starting execution of task {task.id} of type {task.task_type}")
         
-        # Mark as in progress and add to running tasks
-        await self.update_task_status(task.id, TaskStatus.IN_PROGRESS)
-        self.running_tasks[task.id] = task
-        
-        # Find the appropriate handler
-        handler = self.task_handlers.get(task.task_type)
-        if not handler:
-            # Try to find a default handler
-            handler = self.task_handlers.get("default")
-            
-        if not handler:
-            error_msg = f"No handler registered for task type: {task.task_type}"
-            logger.error(error_msg)
-            await self.update_task_status(
-                task.id, 
-                TaskStatus.FAILED, 
-                error=error_msg
-            )
-            return
-            
-        # Execute the handler
         try:
+            # Mark as in progress and add to running tasks
+            await self.update_task_status(task.id, TaskStatus.IN_PROGRESS)
+            self.running_tasks[task.id] = task
+            
+            # Find the appropriate handler
+            handler = self.task_handlers.get(task.task_type) or self.task_handlers.get("default")
+            if not handler:
+                raise ValueError(f"No handler registered for task type: {task.task_type}")
+            
+            # Execute the handler
             results = await handler(task)
-            await self.update_task_status(
-                task.id, 
-                TaskStatus.COMPLETED, 
-                results=results
-            )
+            
+            # Create complete task data for project context
+            project_task = {
+                'task_id': task.id,
+                'type': task.task_type,
+                'description': task.description,
+                'parameters': task.parameters,
+                'created_at': task.created_at,
+                'completed_at': datetime.now().isoformat(),
+                'results': results,
+                'status': 'completed',  # Add explicit status
+                'data': {  # Add data field to match expected structure
+                    'task_type': task.task_type,
+                    'entities': task.parameters.get('entities', [])
+                }
+            }
+            
+            # Update task in context manager first
+            if self.context_manager:
+                self.context_manager.update_task_status(task.id, 'completed', project_task)
+                
+                # Then extract and store insights
+                await self._extract_and_store_insights(task)
+            
+            # Update task in queue manager
+            await self.update_task_status(task.id, TaskStatus.COMPLETED, results=results)
+            
             logger.info(f"Successfully completed task {task.id}")
             
         except Exception as e:
             error_msg = f"Error executing task {task.id}: {str(e)}"
             logger.exception(error_msg)
-            await self.update_task_status(
-                task.id, 
-                TaskStatus.FAILED, 
-                error=error_msg
-            )
+            await self.update_task_status(task.id, TaskStatus.FAILED, error=error_msg)
     
     async def _check_dependent_tasks(self, completed_task_id: str) -> None:
         """
@@ -380,3 +415,57 @@ class TaskQueueManager:
                 heapq.heappush(new_queue, (priority, timestamp, task_id))
         
         self.task_queue = new_queue
+    
+    async def _extract_and_store_insights(self, task: Task) -> None:
+        """
+        Extract insights from task results and store them in project memory.
+        
+        Args:
+            task: The completed task with results
+        """
+        if not task.results:
+            return
+        
+        # Get insights from results - often they're already in a field called 'insights'
+        insights = []
+        
+        # Check if there's an insights field in the results
+        if 'insights' in task.results:
+            raw_insights = task.results['insights']
+            
+            # Handle different formats of insights
+            if isinstance(raw_insights, list):
+                for item in raw_insights:
+                    if isinstance(item, str):
+                        insights.append({
+                            'content': item,
+                            'task_id': task.id,
+                            'task_type': task.task_type,
+                            'entities': task.parameters.get('entities', [])
+                        })
+                    elif isinstance(item, dict) and 'text' in item:
+                        insights.append({
+                            'content': item['text'],
+                            'task_id': task.id,
+                            'task_type': task.task_type,
+                            'entities': task.parameters.get('entities', [])
+                        })
+        
+        # Check if there's a summary that might contain insights
+        elif 'summary' in task.results:
+            insights.append({
+                'content': task.results['summary'],
+                'task_id': task.id,
+                'task_type': task.task_type,
+                'entities': task.parameters.get('entities', [])
+            })
+        
+        # Store each insight in the project memory
+        for insight in insights:
+            self.context_manager.add_insight_to_project(
+                task.project_id,
+                insight
+            )
+        
+        if insights:
+            logger.info(f"Extracted and stored {len(insights)} insights from task {task.id}")

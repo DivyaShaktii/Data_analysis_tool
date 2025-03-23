@@ -65,17 +65,20 @@ class MemoryStore:
         
         self._initialized = True
     
-    def store_insight(self, session_id: str, content: str, entities: List[str], context: str) -> None:
+    def store_insight(self, project_id: str, session_id: Optional[str], 
+                     content: str, entities: List[str], context: str) -> None:
         """
         Store an insight in long-term memory.
         
         Args:
-            session_id: The session where the insight was generated
+            project_id: The project where the insight was generated
+            session_id: Optional session where the insight was generated
             content: The text content of the insight
-            entities: List of entities (columns, metrics, etc.) related to the insight
+            entities: List of entities related to the insight
             context: Conversation context when the insight was generated
         """
         insight = {
+            'project_id': project_id,
             'session_id': session_id,
             'content': content,
             'entities': entities,
@@ -87,14 +90,15 @@ class MemoryStore:
         self._insights.append(insight)
         self._save_file(self._insights_file, self._insights)
         self._update_vectorizer()
-        logger.info(f"Stored new insight from session {session_id}")
+        logger.info(f"Stored new insight from project {project_id}")
     
-    def store_file_schema(self, session_id: str, file_id: str, schema: Dict[str, Any], description: str) -> None:
+    def store_file_schema(self, project_id: str, file_id: str, 
+                          schema: Dict[str, Any], description: str) -> None:
         """
         Store file schema information in long-term memory.
         
         Args:
-            session_id: The session where the file was uploaded
+            project_id: The project where the file was uploaded
             file_id: Unique identifier for the file
             schema: The file's schema (columns, types, etc.)
             description: A text description of the file
@@ -104,7 +108,7 @@ class MemoryStore:
                                   for col in schema.keys()])
         
         schema_entry = {
-            'session_id': session_id,
+            'project_id': project_id,
             'file_id': file_id,
             'schema': schema,
             'description': description,
@@ -117,15 +121,15 @@ class MemoryStore:
         self._schemas.append(schema_entry)
         self._save_file(self._schemas_file, self._schemas)
         self._update_vectorizer()
-        logger.info(f"Stored schema for file {file_id} from session {session_id}")
+        logger.info(f"Stored schema for file {file_id} from project {project_id}")
     
-    def store_analysis_result(self, session_id: str, task_id: str, task_type: str, 
+    def store_analysis_result(self, project_id: str, task_id: str, task_type: str, 
                              entities: List[str], results: Dict[str, Any]) -> None:
         """
         Store analysis results in long-term memory.
         
         Args:
-            session_id: The session where the analysis was performed
+            project_id: The project where the analysis was performed
             task_id: Unique identifier for the analysis task
             task_type: Type of analysis performed
             entities: List of entities involved in the analysis
@@ -135,7 +139,7 @@ class MemoryStore:
         results_text = self._results_to_text(results)
         
         result_entry = {
-            'session_id': session_id,
+            'project_id': project_id,
             'task_id': task_id,
             'task_type': task_type,
             'entities': entities,
@@ -149,36 +153,54 @@ class MemoryStore:
         self._results.append(result_entry)
         self._save_file(self._results_file, self._results)
         self._update_vectorizer()
-        logger.info(f"Stored results for task {task_id} from session {session_id}")
+        logger.info(f"Stored results for task {task_id} from project {project_id}")
     
-    def retrieve_relevant_insights(self, session_id: str, query: str, limit: int = 3) -> List[Dict[str, Any]]:
+    def retrieve_relevant_insights(self, query: str, limit: int = 3, 
+                                  user_id: Optional[str] = None,
+                                  project_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Retrieve insights relevant to the given query.
+        Retrieve insights relevant to the given query, with optional filtering.
         
         Args:
-            session_id: Current session ID
             query: Text query to match against stored insights
             limit: Maximum number of insights to return
+            user_id: Optional user ID to prefer insights from the same user
+            project_id: Optional project ID to filter or prioritize insights
             
         Returns:
             List of relevant insights
         """
         relevant_items = self._retrieve_relevant_items(query, limit * 2)
         
-        # Filter to just insights and prioritize non-session insights to avoid redundancy
-        insights = []
-        session_insights = []
+        # Filter and prioritize based on project/user if provided
+        if project_id or user_id:
+            # First get items that match both project and user (if both provided)
+            matching_items = []
+            other_items = []
+            
+            for item in relevant_items:
+                if project_id and user_id:
+                    # For user matching, we'd need to link projects to users
+                    # This is a simplification - would need a proper implementation
+                    if item.get('project_id') == project_id:
+                        matching_items.append(item)
+                    else:
+                        other_items.append(item)
+                elif project_id:
+                    if item.get('project_id') == project_id:
+                        matching_items.append(item)
+                    else:
+                        other_items.append(item)
+                elif user_id:
+                    # We don't have direct user_id in items, so this would 
+                    # require additional implementation
+                    other_items.append(item)
+                
+            combined = matching_items + other_items
+            return combined[:limit]
         
-        for item in relevant_items:
-            if item['type'] == 'insight':
-                if item['session_id'] == session_id:
-                    session_insights.append(item)
-                else:
-                    insights.append(item)
-        
-        # Combine and limit the results
-        combined = insights + session_insights
-        return combined[:limit]
+        # If no filtering, just return top matches
+        return relevant_items[:limit]
     
     def retrieve_file_schema(self, file_id: str) -> Optional[Dict[str, Any]]:
         """
